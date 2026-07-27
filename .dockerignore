@@ -1,0 +1,11 @@
+reference/
+.git/
+.nextflow/
+.nextflow.log*
+work/
+results/
+report*.html
+timeline*.html
+trace*.txt
+dag*.html
+dag*.svg

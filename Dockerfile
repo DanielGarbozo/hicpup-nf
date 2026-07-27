@@ -11,7 +11,7 @@ LABEL org.opencontainers.image.description="hicpup Module A: fountain cone profi
 LABEL org.opencontainers.image.licenses="MIT"
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git procps \
+    && apt-get install -y --no-install-recommends git procps gcc g++ libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 ARG HICPUP_REF=main
