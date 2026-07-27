@@ -1,0 +1,41 @@
+name: Publish containers
+
+# Publishes both images to GHCR so that `nextflow run DanielGarbozo/hicpup-nf`
+# works for someone who has never cloned the repo. CI does not depend on this -
+# it builds the hicpup image locally on every run.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - image: hicpup-nf
+            context: .
+          - image: hicpup-nf-hic2cool
+            context: containers/hic2cool
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:0.1.0
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest

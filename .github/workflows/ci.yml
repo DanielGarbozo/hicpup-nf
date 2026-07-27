@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Only the `test` profile runs here. `full` downloads ~2.4 Gb from GEO, which
+# would blow the runner's disk and time budget.
+jobs:
+  test:
+    name: nextflow run -profile test,docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: latest
+
+      # Built locally and tagged with the same name the pipeline requests, so
+      # Docker uses it without reaching for GHCR. Keeps CI self-contained and
+      # tests the Dockerfile on every push.
+      - name: Build the hicpup image
+        run: docker build -t ghcr.io/danielgarbozo/hicpup-nf:0.1.0 .
+
+      - name: Run the pipeline
+        run: nextflow run . -profile test,docker --outdir results
+
+      - name: Assert the pipeline produced real output
+        run: |
+          set -euo pipefail
+
+          test -s results/figures/cone_profiles.pdf \
+            || { echo "::error::cone_profiles.pdf missing or empty"; exit 1; }
+
+          test -s results/profile/profiles_merged.tsv \
+            || { echo "::error::profiles_merged.tsv missing or empty"; exit 1; }
+
+          # A green run is not enough. An oversized --flank makes coolpuppy pile
+          # up zero windows and emit an all-NaN matrix, which propagates to a
+          # profile of NaNs and an empty figure without failing anything. Assert
+          # both samples are present and that the values are real numbers.
+          python3 - <<'PY'
+          import csv, sys
+
+          with open("results/profile/profiles_merged.tsv") as fh:
+              rows = list(csv.DictReader(fh, delimiter="\t"))
+
+          samples = {(r["strain"], r["replicate"]) for r in rows}
+          expected = {("ca1200", "combined"), ("dpy27", "combined")}
+          if samples != expected:
+              sys.exit(f"expected samples {expected}, got {samples}")
+
+          values = [float(r["value"]) for r in rows]
+          if any(v != v for v in values):
+              sys.exit("profile contains NaN - the pileup was empty")
+          if not values:
+              sys.exit("profile is empty")
+
+          print(f"OK: {len(values)} profile points across {len(samples)} samples")
+          PY
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: |
+            results/
+            .nextflow.log
+          retention-days: 7
