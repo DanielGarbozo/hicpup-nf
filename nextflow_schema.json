@@ -1,0 +1,110 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://raw.githubusercontent.com/DanielGarbozo/hicpup-nf/main/nextflow_schema.json",
+    "title": "DanielGarbozo/hicpup-nf pipeline parameters",
+    "description": "Downstream Hi-C fountain cone profiles: wraps the hicpup CLI (Module A).",
+    "type": "object",
+    "definitions": {
+        "input_output_options": {
+            "title": "Input/output options",
+            "type": "object",
+            "required": ["input", "outdir"],
+            "properties": {
+                "input": {
+                    "type": "string",
+                    "format": "file-path",
+                    "mimetype": "text/csv",
+                    "pattern": "^\\S+\\.csv$",
+                    "description": "Samplesheet with columns strain,replicate,matrix.",
+                    "help_text": "`matrix` is a .cool or .hic file - a local path, a path relative to the pipeline directory, or an http(s)/ftp URL. Entries ending in .hic are converted by HIC2COOL first."
+                },
+                "outdir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "results",
+                    "description": "Output directory."
+                }
+            }
+        },
+        "reference_assets": {
+            "title": "Reference assets",
+            "type": "object",
+            "required": ["chromsizes"],
+            "properties": {
+                "chromsizes": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "chrom.sizes in bed3 form.",
+                    "help_text": "hicpup.views.build_views requires exactly 6 rows (5 autosomes + chrX, ce10 shape) and fails otherwise."
+                },
+                "fountains_x": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "BED4 (chrom, start, end, strength) of chrX fountain anchors.",
+                    "help_text": "Enables view X. At least one of fountains_x / fountains_a must be set."
+                },
+                "fountains_a": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "BED4 of autosomal fountain anchors. Optional.",
+                    "help_text": "Enables view A. Left unset, the pipeline analyses view X only - hicpup skips a view whose fountain BED is absent."
+                }
+            }
+        },
+        "analysis_options": {
+            "title": "Analysis options",
+            "type": "object",
+            "properties": {
+                "resolution": {
+                    "type": "integer",
+                    "default": 1000,
+                    "description": "Bin size in bp. Validated against the cooler's binsize."
+                },
+                "flank": {
+                    "type": "integer",
+                    "default": 100000,
+                    "description": "Pileup flank in bp; yields a (2*flank/resolution + 1) square matrix.",
+                    "help_text": "Must fit the chromosome. If the window runs off the end, coolpuppy piles up zero windows and returns an all-NaN matrix WITHOUT failing - the run goes green and the figure is empty."
+                },
+                "cone_angle": {
+                    "type": "number",
+                    "default": 60,
+                    "description": "Cone aperture in degrees."
+                },
+                "ndiags": {
+                    "type": "integer",
+                    "default": 40,
+                    "description": "Antidiagonals stacked per side of the cone.",
+                    "help_text": "Bounded by the pileup matrix size; too large raises an IndexError from cone.cone_diagonals. For a 41x41 matrix the limit is 17."
+                },
+                "min_diag": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "Diagonals nearest the anchor to mask."
+                }
+            }
+        },
+        "container_options": {
+            "title": "Container options",
+            "type": "object",
+            "properties": {
+                "hicpup_container": {
+                    "type": "string",
+                    "default": "ghcr.io/danielgarbozo/hicpup-nf:0.1.0",
+                    "description": "Image carrying the hicpup CLI."
+                },
+                "hic2cool_container": {
+                    "type": "string",
+                    "default": "ghcr.io/danielgarbozo/hicpup-nf-hic2cool:0.1.0",
+                    "description": "Image carrying hic2cool. Used only when an input is .hic."
+                }
+            }
+        }
+    },
+    "allOf": [
+        { "$ref": "#/definitions/input_output_options" },
+        { "$ref": "#/definitions/reference_assets" },
+        { "$ref": "#/definitions/analysis_options" },
+        { "$ref": "#/definitions/container_options" }
+    ]
+}

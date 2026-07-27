@@ -1,0 +1,15 @@
+# Local working copy of the hicpup package, kept only as a reading reference
+# while building this pipeline. Not part of this repo (it ships its own .venv,
+# built docs site and .git).
+reference/
+
+# Nextflow
+.nextflow/
+.nextflow.log*
+work/
+results/
+report*.html
+timeline*.html
+trace*.txt
+dag*.html
+dag*.svg
